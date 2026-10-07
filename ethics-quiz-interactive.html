@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ethics Quiz</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh; padding: 20px; color: #333;
+}
+.container { max-width: 700px; margin: 0 auto; }
+.header { text-align: center; color: #fff; padding: 30px 20px; }
+.header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; text-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+.header .meta { font-size: 14px; opacity: 0.9; }
+.progress-bar { background: rgba(255,255,255,0.3); border-radius: 10px; height: 8px; margin: 20px 0; overflow: hidden; }
+.progress-fill { background: #fff; height: 100%; width: 0%; transition: width 0.4s ease; border-radius: 10px; }
+.question { background: #fff; border-radius: 16px; padding: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); display: none; }
+.question.active { display: block; }
+.q-header { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 13px; color: #888; }
+.q-number { font-weight: 600; color: #667eea; }
+.q-text { font-size: 18px; font-weight: 600; line-height: 1.5; margin-bottom: 25px; color: #222; }
+.options { display: flex; flex-direction: column; gap: 12px; }
+.option-wrapper { display: flex; flex-direction: column; }
+.option {
+  display: flex; align-items: flex-start; gap: 14px; padding: 16px 18px;
+  border: 2px solid #e8e8e8; border-radius: 12px; background: #fafafa;
+  cursor: pointer; transition: all 0.2s; text-align: left; font-size: 15px; width: 100%;
+}
+[dir="rtl"] .option { text-align: right; flex-direction: row-reverse; }
+.option:hover:not(.disabled) { border-color: #667eea; background: #f5f3ff; }
+.option.selected { border-color: #667eea; background: #ede9fe; }
+.option.correct { border-color: #22c55e; background: #dcfce7; }
+.option.incorrect { border-color: #ef4444; background: #fee2e2; }
+.option.disabled { cursor: default; }
+.option.show-correct { border-color: #22c55e; background: #dcfce7; }
+.opt-label {
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 50%; background: #e8e8e8;
+  font-weight: 700; font-size: 14px; flex-shrink: 0;
+}
+.option.selected .opt-label { background: #667eea; color: #fff; }
+.option.correct .opt-label { background: #22c55e; color: #fff; }
+.option.incorrect .opt-label { background: #ef4444; color: #fff; }
+.option.show-correct .opt-label { background: #22c55e; color: #fff; }
+.opt-text { padding-top: 5px; line-height: 1.5; }
+
+/* Individual option feedback */
+.option-feedback {
+  margin: 8px 0 4px 46px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+[dir="rtl"] .option-feedback { margin-left: 0; margin-right: 46px; }
+.option-feedback.correct-feedback {
+  background: #dcfce7;
+  border-left: 3px solid #22c55e;
+}
+.option-feedback.incorrect-feedback {
+  background: #fef3f2;
+  border-left: 3px solid #fca5a5;
+}
+[dir="rtl"] .option-feedback.correct-feedback,
+[dir="rtl"] .option-feedback.incorrect-feedback {
+  border-left: none;
+  border-right: 3px solid;
+}
+[dir="rtl"] .option-feedback.correct-feedback { border-right-color: #22c55e; }
+[dir="rtl"] .option-feedback.incorrect-feedback { border-right-color: #fca5a5; }
+.feedback-status {
+  font-weight: 600;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.feedback-status.correct { color: #166534; }
+.feedback-status.incorrect { color: #991b1b; }
+.feedback-rationale { color: #444; }
+
+/* Hint box */
+.hint-box {
+  margin: 12px 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+}
+.hint-toggle {
+  width: 100%;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: #92400e;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.hint-toggle:hover { background: #fef3c7; }
+.hint-content {
+  padding: 0 16px;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s, padding 0.3s;
+  font-size: 14px;
+  color: #78350f;
+  line-height: 1.5;
+}
+.hint-box.show .hint-content {
+  padding: 0 16px 12px;
+  max-height: 200px;
+}
+
+.next-btn {
+  margin-top: 20px; width: 100%; padding: 14px;
+  background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none;
+  border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.next-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102,126,234,0.4); }
+.hidden { display: none !important; }
+.results { background: #fff; border-radius: 16px; padding: 40px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.15); display: none; }
+.results.active { display: block; }
+.results h2 { font-size: 28px; margin-bottom: 10px; color: #333; }
+.results .score { font-size: 64px; font-weight: 700; color: #667eea; margin: 20px 0; }
+.results .score-text { font-size: 18px; color: #666; margin-bottom: 30px; }
+.restart-btn {
+  padding: 14px 40px; background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer;
+}
+
+/* Math CSS */
+.math, .math-block { font-family: "Cambria Math", "Times New Roman", Times, serif; font-style: italic; }
+.math-block { display: block; text-align: center; margin: 10px 0; font-size: 110%; }
+.frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; margin: 0 3px; font-size: 0.9em; }
+.frac-num { border-bottom: 1px solid currentColor; padding: 0 4px 2px; line-height: 1.2; }
+.frac-den { padding: 2px 4px 0; line-height: 1.2; }
+.sqrt { white-space: nowrap; }
+.sqrt-content { border-top: 1px solid currentColor; padding: 0 3px; margin-left: 2px; }
+sup, sub { font-size: 0.75em; }
+sup { vertical-align: super; }
+sub { vertical-align: sub; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Ethics Quiz</h1>
+    <div class="meta">12 questions</div>
+    <div class="progress-bar"><div class="progress-fill"></div></div>
+  </div>
+  <div id="quiz-container">
+        <div class="question" data-index="0">
+          <div class="q-header">
+            <span class="q-number">Question 1</span>
+            <span class="q-of">/ 12</span>
+          </div>
+          <div class="q-text">In a scenario where a discovered water contaminant threatens nearby residents, a leader considers immediately notifying affected families rather than waiting out a 60-day legal reporting window. Which deontological decision criterion directly emphasizes protecting these individuals from being treated merely as financial means to preserve a plant sale?</div>
+          
+          <div class="options">
+        <div class="option-wrapper">
+          <button class="option" data-label="A" data-correct="false" data-rationale="Universality evaluates whether an action's underlying maxim can be consistently willed as a universal law for everyone.">
+            <span class="opt-label">A</span>
+            <span class="opt-text">Universality</span>
+          </button>
+          <div class="option-feedback hidden" data-for="A">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Universality evaluates whether an action's underlying maxim can be consistently willed as a universal law for everyone.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="B" data-correct="false" data-rationale="Utility is the core criterion of utilitarianism, which focuses on net outcome optimization rather than deontological duties.">
+            <span class="opt-label">B</span>
+            <span class="opt-text">Utility</span>
+          </button>
+          <div class="option-feedback hidden" data-for="B">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Utility is the core criterion of utilitarianism, which focuses on net outcome optimization rather than deontological duties.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="C" data-correct="false" data-rationale="Agency focuses specifically on providing individuals with the opportunity to make their own choices and accept accountability.">
+            <span class="opt-label">C</span>
+            <span class="opt-text">Agency</span>
+          </button>
+          <div class="option-feedback hidden" data-for="C">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Agency focuses specifically on providing individuals with the opportunity to make their own choices and accept accountability.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="D" data-correct="true" data-rationale="Dignity requires treating individuals as ends in themselves rather than merely as means to corporate or financial ends.">
+            <span class="opt-label">D</span>
+            <span class="opt-text">Dignity</span>
+          </button>
+          <div class="option-feedback hidden" data-for="D">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Dignity requires treating individuals as ends in themselves rather than merely as means to corporate or financial ends.</div>
+          </div>
+        </div>
+      </div>
+          <button class="next-btn hidden">Next Question →</button>
+        </div>
+      
+        <div class="question" data-index="1">
+          <div class="q-header">
+            <span class="q-number">Question 2</span>
+            <span class="q-of">/ 12</span>
+          </div>
+          <div class="q-text">A corporate executive argues that withholding a toxic chemical contamination report for 59 days is ethical because preserving company value for thousands of shareholders outweighs the potential health risks to a small community. How does Kantian deontology reject this argument?</div>
+          
+          <div class="options">
+        <div class="option-wrapper">
+          <button class="option" data-label="A" data-correct="false" data-rationale="Corporate mission alignment falls under virtue ethics (eudaimonism), not Kantian deontology.">
+            <span class="opt-label">A</span>
+            <span class="opt-text">Deontology dictates that corporate mission statements automatically take precedence over community welfare.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="A">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Corporate mission alignment falls under virtue ethics (eudaimonism), not Kantian deontology.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="B" data-correct="true" data-rationale="Kantian deontology holds that ethical duties exist independently of consequences, making it unacceptable to sacrifice rights for net utility.">
+            <span class="opt-label">B</span>
+            <span class="opt-text">Deontology asserts that moral duty and human rights are absolute ends that cannot be traded off to maximize net utility.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="B">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Kantian deontology holds that ethical duties exist independently of consequences, making it unacceptable to sacrifice rights for net utility.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="C" data-correct="false" data-rationale="Democratic consensus voting is not the defining criterion of Kantian duty or categorical imperatives.">
+            <span class="opt-label">C</span>
+            <span class="opt-text">Deontology requires holding a public vote among all affected families before making any organizational choice.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="C">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Democratic consensus voting is not the defining criterion of Kantian duty or categorical imperatives.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="D" data-correct="false" data-rationale="Calculating financial costs and publicity risks reflects a utilitarian outcome analysis, not a Kantian evaluation.">
+            <span class="opt-label">D</span>
+            <span class="opt-text">Deontology requires calculating whether the negative media exposure of a leak outweighs the sale price of the asset.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="D">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Calculating financial costs and publicity risks reflects a utilitarian outcome analysis, not a Kantian evaluation.</div>
+          </div>
+        </div>
+      </div>
+          <button class="next-btn hidden">Next Question →</button>
+        </div>
+      
+        <div class="question" data-index="2">
+          <div class="q-header">
+            <span class="q-number">Question 3</span>
+            <span class="q-of">/ 12</span>
+          </div>
+          <div class="q-text">When evaluating an aggressive strategy, an executive asks: 'How would our leadership team feel if our full internal discussion and motives were published on the front page of the news?' Which specific Virtue Ethics criterion is being applied?</div>
+          
+          <div class="options">
+        <div class="option-wrapper">
+          <button class="option" data-label="A" data-correct="true" data-rationale="The disclosure criterion evaluates ethics by considering the public visibility and media exposure of one's decisions and reasoning.">
+            <span class="opt-label">A</span>
+            <span class="opt-text">Disclosure</span>
+          </button>
+          <div class="option-feedback hidden" data-for="A">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">The disclosure criterion evaluates ethics by considering the public visibility and media exposure of one's decisions and reasoning.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="B" data-correct="false" data-rationale="Integrity and eudaimonism focus on alignment with personal calling, core competence, and organizational mission.">
+            <span class="opt-label">B</span>
+            <span class="opt-text">Integrity / Eudaimonism</span>
+          </button>
+          <div class="option-feedback hidden" data-for="B">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Integrity and eudaimonism focus on alignment with personal calling, core competence, and organizational mission.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="C" data-correct="false" data-rationale="Personal virtues focus on whether an action develops individual moral character and makes one a better person.">
+            <span class="opt-label">C</span>
+            <span class="opt-text">Personal virtues</span>
+          </button>
+          <div class="option-feedback hidden" data-for="C">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Personal virtues focus on whether an action develops individual moral character and makes one a better person.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="D" data-correct="false" data-rationale="Societal obligations are derived from Social Contract theory, not Virtue Ethics.">
+            <span class="opt-label">D</span>
+            <span class="opt-text">Societal obligations</span>
+          </button>
+          <div class="option-feedback hidden" data-for="D">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Societal obligations are derived from Social Contract theory, not Virtue Ethics.</div>
+          </div>
+        </div>
+      </div>
+          <button class="next-btn hidden">Next Question →</button>
+        </div>
+      
+        <div class="question" data-index="3">
+          <div class="q-header">
+            <span class="q-number">Question 4</span>
+            <span class="q-of">/ 12</span>
+          </div>
+          <div class="q-text">A manager facing safety risks in a manufacturing plant decides to fully disclose operational hazards to workers, allowing them to independently decide whether to work under those conditions. Which deontological criterion is most directly demonstrated?</div>
+          
+          <div class="options">
+        <div class="option-wrapper">
+          <button class="option" data-label="A" data-correct="false" data-rationale="Justice centers on the equitable distribution of costs and benefits across all parties involved.">
+            <span class="opt-label">A</span>
+            <span class="opt-text">Justice</span>
+          </button>
+          <div class="option-feedback hidden" data-for="A">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Justice centers on the equitable distribution of costs and benefits across all parties involved.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="B" data-correct="false" data-rationale="Care is a criterion of Ethics of Care that focuses on providing support for vulnerable individuals.">
+            <span class="opt-label">B</span>
+            <span class="opt-text">Care</span>
+          </button>
+          <div class="option-feedback hidden" data-for="B">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Care is a criterion of Ethics of Care that focuses on providing support for vulnerable individuals.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="C" data-correct="false" data-rationale="Utility focuses on aggregating net positive outcomes rather than preserving individual autonomy.">
+            <span class="opt-label">C</span>
+            <span class="opt-text">Utility</span>
+          </button>
+          <div class="option-feedback hidden" data-for="C">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Utility focuses on aggregating net positive outcomes rather than preserving individual autonomy.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="D" data-correct="true" data-rationale="Agency emphasizes granting individuals the autonomy to make informed personal choices and handle the consequences.">
+            <span class="opt-label">D</span>
+            <span class="opt-text">Agency</span>
+          </button>
+          <div class="option-feedback hidden" data-for="D">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Agency emphasizes granting individuals the autonomy to make informed personal choices and handle the consequences.</div>
+          </div>
+        </div>
+      </div>
+          <button class="next-btn hidden">Next Question →</button>
+        </div>
+      
+        <div class="question" data-index="4">
+          <div class="q-header">
+            <span class="q-number">Question 5</span>
+            <span class="q-of">/ 12</span>
+          </div>
+          <div class="q-text">In a corporate restructuring, Leader A focuses on fulfilling explicit obligations to industry partners and broader market stability, whereas Leader B focuses on protecting the needs of low-wage workers who lack organizational voice. Which ethical frameworks distinguish Leader A from Leader B?</div>
+          
+          <div class="options">
+        <div class="option-wrapper">
+          <button class="option" data-label="A" data-correct="false" data-rationale="Utilitarianism seeks overall net outcome optimization rather than specific structural obligations to market partners.">
+            <span class="opt-label">A</span>
+            <span class="opt-text">Leader A applies Utilitarianism; Leader B applies Deontology.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="A">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Utilitarianism seeks overall net outcome optimization rather than specific structural obligations to market partners.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="B" data-correct="false" data-rationale="Virtue Ethics evaluates identity and character rather than societal obligation agreements.">
+            <span class="opt-label">B</span>
+            <span class="opt-text">Leader A applies Virtue Ethics; Leader B applies Social Contracts.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="B">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Virtue Ethics evaluates identity and character rather than societal obligation agreements.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="C" data-correct="true" data-rationale="Social Contracts address duties to broader societal and economic structures, while Ethics of Care focuses on supporting vulnerable groups.">
+            <span class="opt-label">C</span>
+            <span class="opt-text">Leader A applies Social Contracts; Leader B applies Ethics of Care.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="C">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Social Contracts address duties to broader societal and economic structures, while Ethics of Care focuses on supporting vulnerable groups.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="D" data-correct="false" data-rationale="Deontology focuses on universal duties rather than specific market environment obligations.">
+            <span class="opt-label">D</span>
+            <span class="opt-text">Leader A applies Deontology; Leader B applies Utilitarianism.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="D">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Deontology focuses on universal duties rather than specific market environment obligations.</div>
+          </div>
+        </div>
+      </div>
+          <button class="next-btn hidden">Next Question →</button>
+        </div>
+      
+        <div class="question" data-index="5">
+          <div class="q-header">
+            <span class="q-number">Question 6</span>
+            <span class="q-of">/ 12</span>
+          </div>
+          <div class="q-text">Research by Zhang, Gino, and Margolis suggests that leaders generate greater moral insight during ethical dilemmas by making which cognitive shift in their thinking?</div>
+          
+          <div class="options">
+        <div class="option-wrapper">
+          <button class="option" data-label="A" data-correct="false" data-rationale="Cost minimization narrows ethical perspective rather than expanding moral insight.">
+            <span class="opt-label">A</span>
+            <span class="opt-text">Shifting evaluation from long-term stakeholder outcomes to immediate cost minimization.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="A">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Cost minimization narrows ethical perspective rather than expanding moral insight.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="B" data-correct="false" data-rationale="Relying solely on legal windows limits moral insight and reduces choices to passive rule-following.">
+            <span class="opt-label">B</span>
+            <span class="opt-text">Shifting focus from organizational values to strict legal compliance windows.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="B">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Relying solely on legal windows limits moral insight and reduces choices to passive rule-following.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="C" data-correct="true" data-rationale="Considering what 'could' be done relaxes dilemma constraints and opens space for building creative ethical solutions.">
+            <span class="opt-label">C</span>
+            <span class="opt-text">Shifting consideration from what individuals 'should' do to what individuals 'could' do.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="C">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Considering what 'could' be done relaxes dilemma constraints and opens space for building creative ethical solutions.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="D" data-correct="false" data-rationale="Seeking a single ideal answer restricts decision building and reinforces rigid constraint thinking.">
+            <span class="opt-label">D</span>
+            <span class="opt-text">Shifting focus from multi-option decision building to finding a single ideal Platonic answer.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="D">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Seeking a single ideal answer restricts decision building and reinforces rigid constraint thinking.</div>
+          </div>
+        </div>
+      </div>
+          <button class="next-btn hidden">Next Question →</button>
+        </div>
+      
+        <div class="question" data-index="6">
+          <div class="q-header">
+            <span class="q-number">Question 7</span>
+            <span class="q-of">/ 12</span>
+          </div>
+          <div class="q-text">A company determines that paying out potential legal settlements for an unaddressed product flaw is less expensive than executing a full recall, leading them to delay action. What limitation of pure Utilitarianism does this situation highlight?</div>
+          
+          <div class="options">
+        <div class="option-wrapper">
+          <button class="option" data-label="A" data-correct="false" data-rationale="Absolute adherence to universal rules is the core of deontology, not utilitarianism.">
+            <span class="opt-label">A</span>
+            <span class="opt-text">Utilitarianism requires absolute adherence to universal rules regardless of financial consequences.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="A">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Absolute adherence to universal rules is the core of deontology, not utilitarianism.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="B" data-correct="true" data-rationale="Utilitarianism focuses on net aggregate outcomes, which can lead to sacrificing basic rights or safety if net calculated gains appear greater.">
+            <span class="opt-label">B</span>
+            <span class="opt-text">Utility calculations can justify inflicting harm on a minority if the aggregated financial benefit to the majority is larger.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="B">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Utilitarianism focuses on net aggregate outcomes, which can lead to sacrificing basic rights or safety if net calculated gains appear greater.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="C" data-correct="false" data-rationale="Utilitarianism is specifically designed to assess aggregated impacts across multiple stakeholders.">
+            <span class="opt-label">C</span>
+            <span class="opt-text">Utilitarianism cannot be applied when multiple stakeholders are involved in a decision.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="C">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Utilitarianism is specifically designed to assess aggregated impacts across multiple stakeholders.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="D" data-correct="false" data-rationale="Focusing on character and virtue defines Virtue Ethics, whereas utilitarianism strictly calculates outcomes.">
+            <span class="opt-label">D</span>
+            <span class="opt-text">Utilitarianism relies entirely on personal character and moral virtue rather than outcome calculations.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="D">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Focusing on character and virtue defines Virtue Ethics, whereas utilitarianism strictly calculates outcomes.</div>
+          </div>
+        </div>
+      </div>
+          <button class="next-btn hidden">Next Question →</button>
+        </div>
+      
+        <div class="question" data-index="7">
+          <div class="q-header">
+            <span class="q-number">Question 8</span>
+            <span class="q-of">/ 12</span>
+          </div>
+          <div class="q-text">Company X allocates resources strictly equitably across all departments based on impartial, standardized rules. Company Y prioritizes resource allocation to long-standing partners who share a deep history of mutual trust. Which theoretical roots correspond to Company X and Company Y?</div>
+          
+          <div class="options">
+        <div class="option-wrapper">
+          <button class="option" data-label="A" data-correct="false" data-rationale="Disclosure assesses public reputation, which does not drive impartial resource distribution.">
+            <span class="opt-label">A</span>
+            <span class="opt-text">Company X uses Virtue Ethics (Disclosure); Company Y uses Deontology (Universality).</span>
+          </button>
+          <div class="option-feedback hidden" data-for="A">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Disclosure assesses public reputation, which does not drive impartial resource distribution.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="B" data-correct="true" data-rationale="Deontological justice demands equitable, fair distribution, while Ethics of Care emphasizes duties arising from special relational trust.">
+            <span class="opt-label">B</span>
+            <span class="opt-text">Company X uses Deontology (Justice); Company Y uses Ethics of Care (Special relationships).</span>
+          </button>
+          <div class="option-feedback hidden" data-for="B">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Deontological justice demands equitable, fair distribution, while Ethics of Care emphasizes duties arising from special relational trust.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="C" data-correct="false" data-rationale="Utilitarianism allocates based on maximizing net benefit, not standardized equitable fairness rules.">
+            <span class="opt-label">C</span>
+            <span class="opt-text">Company X uses Utilitarianism (Utility); Company Y uses Social Contracts (Social obligations).</span>
+          </button>
+          <div class="option-feedback hidden" data-for="C">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Utilitarianism allocates based on maximizing net benefit, not standardized equitable fairness rules.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="D" data-correct="false" data-rationale="Social contracts deal with obligations to society at large rather than standardized internal equity.">
+            <span class="opt-label">D</span>
+            <span class="opt-text">Company X uses Social Contracts (Societal obligations); Company Y uses Virtue Ethics (Integrity).</span>
+          </button>
+          <div class="option-feedback hidden" data-for="D">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Social contracts deal with obligations to society at large rather than standardized internal equity.</div>
+          </div>
+        </div>
+      </div>
+          <button class="next-btn hidden">Next Question →</button>
+        </div>
+      
+        <div class="question" data-index="8">
+          <div class="q-header">
+            <span class="q-number">Question 9</span>
+            <span class="q-of">/ 12</span>
+          </div>
+          <div class="q-text">A technology firm turns down a lucrative contract to build automated surveillance software because the work contradicts its organizational mission statement and core competence. Which decision criterion within Virtue Ethics was used?</div>
+          
+          <div class="options">
+        <div class="option-wrapper">
+          <button class="option" data-label="A" data-correct="false" data-rationale="Agency is a deontological concept concerned with individual choice and accountability.">
+            <span class="opt-label">A</span>
+            <span class="opt-text">Agency</span>
+          </button>
+          <div class="option-feedback hidden" data-for="A">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Agency is a deontological concept concerned with individual choice and accountability.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="B" data-correct="false" data-rationale="Disclosure centers on how a decision would look if broadcast to the public media.">
+            <span class="opt-label">B</span>
+            <span class="opt-text">Disclosure</span>
+          </button>
+          <div class="option-feedback hidden" data-for="B">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Disclosure centers on how a decision would look if broadcast to the public media.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="C" data-correct="false" data-rationale="Universality is a Kantian deontological test of global rule consistency.">
+            <span class="opt-label">C</span>
+            <span class="opt-text">Universality</span>
+          </button>
+          <div class="option-feedback hidden" data-for="C">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Universality is a Kantian deontological test of global rule consistency.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="D" data-correct="true" data-rationale="Integrity and eudaimonism evaluate whether an action aligns with organizational mission, vision, calling, and core competencies.">
+            <span class="opt-label">D</span>
+            <span class="opt-text">Integrity / Eudaimonism</span>
+          </button>
+          <div class="option-feedback hidden" data-for="D">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Integrity and eudaimonism evaluate whether an action aligns with organizational mission, vision, calling, and core competencies.</div>
+          </div>
+        </div>
+      </div>
+          <button class="next-btn hidden">Next Question →</button>
+        </div>
+      
+        <div class="question" data-index="9">
+          <div class="q-header">
+            <span class="q-number">Question 10</span>
+            <span class="q-of">/ 12</span>
+          </div>
+          <div class="q-text">In an environmental crisis, an organization's attorney advises keeping silent about groundwater contaminants until the end of a statutory reporting window to avoid admitting liability. Why would this approach fail an Ethics of Care framework?</div>
+          
+          <div class="options">
+        <div class="option-wrapper">
+          <button class="option" data-label="A" data-correct="false" data-rationale="The categorical imperative is a Kantian concept focused on moral duty, not profit maximization.">
+            <span class="opt-label">A</span>
+            <span class="opt-text">It violates the categorical imperative requiring all corporate decisions to be profit-maximizing.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="A">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">The categorical imperative is a Kantian concept focused on moral duty, not profit maximization.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="B" data-correct="true" data-rationale="Ethics of Care prioritizes identifying vulnerable groups and actively providing care and support to meet their needs.">
+            <span class="opt-label">B</span>
+            <span class="opt-text">It ignores the immediate needs and safety of vulnerable families reliant on the tainted water source.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="B">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Ethics of Care prioritizes identifying vulnerable groups and actively providing care and support to meet their needs.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="C" data-correct="false" data-rationale="Contractual obligations to market competitors relate to social contracts or deontology, not care ethics.">
+            <span class="opt-label">C</span>
+            <span class="opt-text">It violates explicit contractual agreements made with competitor organizations in the area.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="C">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Contractual obligations to market competitors relate to social contracts or deontology, not care ethics.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="D" data-correct="false" data-rationale="Stock performance optimization is a financial/utilitarian concern, not an Ethics of Care priority.">
+            <span class="opt-label">D</span>
+            <span class="opt-text">It fails to optimize long-term stock performance for international investors.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="D">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Stock performance optimization is a financial/utilitarian concern, not an Ethics of Care priority.</div>
+          </div>
+        </div>
+      </div>
+          <button class="next-btn hidden">Next Question →</button>
+        </div>
+      
+        <div class="question" data-index="10">
+          <div class="q-header">
+            <span class="q-number">Question 11</span>
+            <span class="q-of">/ 12</span>
+          </div>
+          <div class="q-text">An executive considers making a false promise to a vendor to secure temporary financing, assuming the debt will be paid back before anyone notices. Under Kant’s principle of Universality, why is this action unethical?</div>
+          
+          <div class="options">
+        <div class="option-wrapper">
+          <button class="option" data-label="A" data-correct="true" data-rationale="Kant's universality test shows that if false promising were universalized, trust would cease, creating a self-contradiction.">
+            <span class="opt-label">A</span>
+            <span class="opt-text">If making false promises became a universal law, the concept of a promise would become logically impossible and self-contradictory.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="A">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Kant's universality test shows that if false promising were universalized, trust would cease, creating a self-contradiction.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="B" data-correct="false" data-rationale="Concern over media exposure and brand image represents the Virtue Ethics disclosure criterion, not Kantian universality.">
+            <span class="opt-label">B</span>
+            <span class="opt-text">The company's brand image will suffer irreparable damage if the local press uncovers the lie.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="B">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Concern over media exposure and brand image represents the Virtue Ethics disclosure criterion, not Kantian universality.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="C" data-correct="false" data-rationale="Weighing financial gains against financial losses is a utilitarian calculation.">
+            <span class="opt-label">C</span>
+            <span class="opt-text">The vendor is a key stakeholder whose net financial loss outweighs the executive's temporary gain.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="C">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Weighing financial gains against financial losses is a utilitarian calculation.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="D" data-correct="false" data-rationale="Personal conscience represents subjective intuition, whereas Kantian universality relies on logical non-contradiction.">
+            <span class="opt-label">D</span>
+            <span class="opt-text">The executive's personal conscience feels uncomfortable with deceitful conduct.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="D">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Personal conscience represents subjective intuition, whereas Kantian universality relies on logical non-contradiction.</div>
+          </div>
+        </div>
+      </div>
+          <button class="next-btn hidden">Next Question →</button>
+        </div>
+      
+        <div class="question" data-index="11">
+          <div class="q-header">
+            <span class="q-number">Question 12</span>
+            <span class="q-of">/ 12</span>
+          </div>
+          <div class="q-text">According to source readings on ethical decision-making, what is a primary drawback of believing that every ethical dilemma has 'one perfect or ideal answer'?</div>
+          
+          <div class="options">
+        <div class="option-wrapper">
+          <button class="option" data-label="A" data-correct="true" data-rationale="Believing in a single ideal solution restricts option generation, whereas viewing dilemmas as having multiple solutions fosters moral insight.">
+            <span class="opt-label">A</span>
+            <span class="opt-text">It creates a rigid constraint mindset that prevents leaders from actively building creative alternative options.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="A">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Believing in a single ideal solution restricts option generation, whereas viewing dilemmas as having multiple solutions fosters moral insight.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="B" data-correct="false" data-rationale="Idealism relates to how solutions are conceived, not whether an organization can define its mission.">
+            <span class="opt-label">B</span>
+            <span class="opt-text">It prevents organizations from establishing clear mission statements and core competencies.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="B">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Idealism relates to how solutions are conceived, not whether an organization can define its mission.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="C" data-correct="false" data-rationale="Seeking one ideal answer does not privilege Ethics of Care over legal rules.">
+            <span class="opt-label">C</span>
+            <span class="opt-text">It leads to an overemphasis on Ethics of Care at the expense of legal requirements.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="C">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Seeking one ideal answer does not privilege Ethics of Care over legal rules.</div>
+          </div>
+        </div>
+      
+        <div class="option-wrapper">
+          <button class="option" data-label="D" data-correct="false" data-rationale="Platonic idealism does not inherently force utilitarian cost-benefit modeling.">
+            <span class="opt-label">D</span>
+            <span class="opt-text">It forces leaders to rely strictly on utilitarian calculations rather than personal virtues.</span>
+          </button>
+          <div class="option-feedback hidden" data-for="D">
+            <div class="feedback-status"></div>
+            <div class="feedback-rationale">Platonic idealism does not inherently force utilitarian cost-benefit modeling.</div>
+          </div>
+        </div>
+      </div>
+          <button class="next-btn hidden">Next Question →</button>
+        </div>
+      </div>
+  <div class="results" id="results">
+    <h2>Quiz Complete!</h2>
+    <div class="score" id="score">0%</div>
+    <div class="score-text" id="score-text"></div>
+    <button class="restart-btn" onclick="restart()">Try Again</button>
+  </div>
+</div>
+<script>
+const quizData = [{"question":"In a scenario where a discovered water contaminant threatens nearby residents, a leader considers immediately notifying affected families rather than waiting out a 60-day legal reporting window. Which deontological decision criterion directly emphasizes protecting these individuals from being treated merely as financial means to preserve a plant sale?","hint":"Consider the principle that forbids using people solely as tools or instruments for financial gain.","options":[{"label":"A","text":"Universality","isCorrect":false,"rationale":"Universality evaluates whether an action's underlying maxim can be consistently willed as a universal law for everyone."},{"label":"B","text":"Utility","isCorrect":false,"rationale":"Utility is the core criterion of utilitarianism, which focuses on net outcome optimization rather than deontological duties."},{"label":"C","text":"Agency","isCorrect":false,"rationale":"Agency focuses specifically on providing individuals with the opportunity to make their own choices and accept accountability."},{"label":"D","text":"Dignity","isCorrect":true,"rationale":"Dignity requires treating individuals as ends in themselves rather than merely as means to corporate or financial ends."}]},{"question":"A corporate executive argues that withholding a toxic chemical contamination report for 59 days is ethical because preserving company value for thousands of shareholders outweighs the potential health risks to a small community. How does Kantian deontology reject this argument?","hint":"Focus on how Kant views moral obligations relative to outcome calculations and utility.","options":[{"label":"A","text":"Deontology dictates that corporate mission statements automatically take precedence over community welfare.","isCorrect":false,"rationale":"Corporate mission alignment falls under virtue ethics (eudaimonism), not Kantian deontology."},{"label":"B","text":"Deontology asserts that moral duty and human rights are absolute ends that cannot be traded off to maximize net utility.","isCorrect":true,"rationale":"Kantian deontology holds that ethical duties exist independently of consequences, making it unacceptable to sacrifice rights for net utility."},{"label":"C","text":"Deontology requires holding a public vote among all affected families before making any organizational choice.","isCorrect":false,"rationale":"Democratic consensus voting is not the defining criterion of Kantian duty or categorical imperatives."},{"label":"D","text":"Deontology requires calculating whether the negative media exposure of a leak outweighs the sale price of the asset.","isCorrect":false,"rationale":"Calculating financial costs and publicity risks reflects a utilitarian outcome analysis, not a Kantian evaluation."}]},{"question":"When evaluating an aggressive strategy, an executive asks: 'How would our leadership team feel if our full internal discussion and motives were published on the front page of the news?' Which specific Virtue Ethics criterion is being applied?","hint":"Think about the ethical test named after making decisions transparent to the public eye.","options":[{"label":"A","text":"Disclosure","isCorrect":true,"rationale":"The disclosure criterion evaluates ethics by considering the public visibility and media exposure of one's decisions and reasoning."},{"label":"B","text":"Integrity / Eudaimonism","isCorrect":false,"rationale":"Integrity and eudaimonism focus on alignment with personal calling, core competence, and organizational mission."},{"label":"C","text":"Personal virtues","isCorrect":false,"rationale":"Personal virtues focus on whether an action develops individual moral character and makes one a better person."},{"label":"D","text":"Societal obligations","isCorrect":false,"rationale":"Societal obligations are derived from Social Contract theory, not Virtue Ethics."}]},{"question":"A manager facing safety risks in a manufacturing plant decides to fully disclose operational hazards to workers, allowing them to independently decide whether to work under those conditions. Which deontological criterion is most directly demonstrated?","hint":"Identify the concept centered on human autonomy and individual decision-making choice.","options":[{"label":"A","text":"Justice","isCorrect":false,"rationale":"Justice centers on the equitable distribution of costs and benefits across all parties involved."},{"label":"B","text":"Care","isCorrect":false,"rationale":"Care is a criterion of Ethics of Care that focuses on providing support for vulnerable individuals."},{"label":"C","text":"Utility","isCorrect":false,"rationale":"Utility focuses on aggregating net positive outcomes rather than preserving individual autonomy."},{"label":"D","text":"Agency","isCorrect":true,"rationale":"Agency emphasizes granting individuals the autonomy to make informed personal choices and handle the consequences."}]},{"question":"In a corporate restructuring, Leader A focuses on fulfilling explicit obligations to industry partners and broader market stability, whereas Leader B focuses on protecting the needs of low-wage workers who lack organizational voice. Which ethical frameworks distinguish Leader A from Leader B?","hint":"Contrast broad societal duty frameworks with frameworks centered on protecting vulnerable, voiceless groups.","options":[{"label":"A","text":"Leader A applies Utilitarianism; Leader B applies Deontology.","isCorrect":false,"rationale":"Utilitarianism seeks overall net outcome optimization rather than specific structural obligations to market partners."},{"label":"B","text":"Leader A applies Virtue Ethics; Leader B applies Social Contracts.","isCorrect":false,"rationale":"Virtue Ethics evaluates identity and character rather than societal obligation agreements."},{"label":"C","text":"Leader A applies Social Contracts; Leader B applies Ethics of Care.","isCorrect":true,"rationale":"Social Contracts address duties to broader societal and economic structures, while Ethics of Care focuses on supporting vulnerable groups."},{"label":"D","text":"Leader A applies Deontology; Leader B applies Utilitarianism.","isCorrect":false,"rationale":"Deontology focuses on universal duties rather than specific market environment obligations."}]},{"question":"Research by Zhang, Gino, and Margolis suggests that leaders generate greater moral insight during ethical dilemmas by making which cognitive shift in their thinking?","hint":"Look for the subtle linguistic shift from rigid obligation to creative option generation.","options":[{"label":"A","text":"Shifting evaluation from long-term stakeholder outcomes to immediate cost minimization.","isCorrect":false,"rationale":"Cost minimization narrows ethical perspective rather than expanding moral insight."},{"label":"B","text":"Shifting focus from organizational values to strict legal compliance windows.","isCorrect":false,"rationale":"Relying solely on legal windows limits moral insight and reduces choices to passive rule-following."},{"label":"C","text":"Shifting consideration from what individuals 'should' do to what individuals 'could' do.","isCorrect":true,"rationale":"Considering what 'could' be done relaxes dilemma constraints and opens space for building creative ethical solutions."},{"label":"D","text":"Shifting focus from multi-option decision building to finding a single ideal Platonic answer.","isCorrect":false,"rationale":"Seeking a single ideal answer restricts decision building and reinforces rigid constraint thinking."}]},{"question":"A company determines that paying out potential legal settlements for an unaddressed product flaw is less expensive than executing a full recall, leading them to delay action. What limitation of pure Utilitarianism does this situation highlight?","hint":"Consider how aggregate benefit calculations can marginalize or harm smaller affected groups.","options":[{"label":"A","text":"Utilitarianism requires absolute adherence to universal rules regardless of financial consequences.","isCorrect":false,"rationale":"Absolute adherence to universal rules is the core of deontology, not utilitarianism."},{"label":"B","text":"Utility calculations can justify inflicting harm on a minority if the aggregated financial benefit to the majority is larger.","isCorrect":true,"rationale":"Utilitarianism focuses on net aggregate outcomes, which can lead to sacrificing basic rights or safety if net calculated gains appear greater."},{"label":"C","text":"Utilitarianism cannot be applied when multiple stakeholders are involved in a decision.","isCorrect":false,"rationale":"Utilitarianism is specifically designed to assess aggregated impacts across multiple stakeholders."},{"label":"D","text":"Utilitarianism relies entirely on personal character and moral virtue rather than outcome calculations.","isCorrect":false,"rationale":"Focusing on character and virtue defines Virtue Ethics, whereas utilitarianism strictly calculates outcomes."}]},{"question":"Company X allocates resources strictly equitably across all departments based on impartial, standardized rules. Company Y prioritizes resource allocation to long-standing partners who share a deep history of mutual trust. Which theoretical roots correspond to Company X and Company Y?","hint":"Differentiate between rule-based equitable distribution and trust-based relational obligations.","options":[{"label":"A","text":"Company X uses Virtue Ethics (Disclosure); Company Y uses Deontology (Universality).","isCorrect":false,"rationale":"Disclosure assesses public reputation, which does not drive impartial resource distribution."},{"label":"B","text":"Company X uses Deontology (Justice); Company Y uses Ethics of Care (Special relationships).","isCorrect":true,"rationale":"Deontological justice demands equitable, fair distribution, while Ethics of Care emphasizes duties arising from special relational trust."},{"label":"C","text":"Company X uses Utilitarianism (Utility); Company Y uses Social Contracts (Social obligations).","isCorrect":false,"rationale":"Utilitarianism allocates based on maximizing net benefit, not standardized equitable fairness rules."},{"label":"D","text":"Company X uses Social Contracts (Societal obligations); Company Y uses Virtue Ethics (Integrity).","isCorrect":false,"rationale":"Social contracts deal with obligations to society at large rather than standardized internal equity."}]},{"question":"A technology firm turns down a lucrative contract to build automated surveillance software because the work contradicts its organizational mission statement and core competence. Which decision criterion within Virtue Ethics was used?","hint":"Look for the criterion that asks whether an action reflects who an organization is and what it is called to do.","options":[{"label":"A","text":"Agency","isCorrect":false,"rationale":"Agency is a deontological concept concerned with individual choice and accountability."},{"label":"B","text":"Disclosure","isCorrect":false,"rationale":"Disclosure centers on how a decision would look if broadcast to the public media."},{"label":"C","text":"Universality","isCorrect":false,"rationale":"Universality is a Kantian deontological test of global rule consistency."},{"label":"D","text":"Integrity / Eudaimonism","isCorrect":true,"rationale":"Integrity and eudaimonism evaluate whether an action aligns with organizational mission, vision, calling, and core competencies."}]},{"question":"In an environmental crisis, an organization's attorney advises keeping silent about groundwater contaminants until the end of a statutory reporting window to avoid admitting liability. Why would this approach fail an Ethics of Care framework?","hint":"Focus on how Ethics of Care treats groups who are vulnerable or lack power.","options":[{"label":"A","text":"It violates the categorical imperative requiring all corporate decisions to be profit-maximizing.","isCorrect":false,"rationale":"The categorical imperative is a Kantian concept focused on moral duty, not profit maximization."},{"label":"B","text":"It ignores the immediate needs and safety of vulnerable families reliant on the tainted water source.","isCorrect":true,"rationale":"Ethics of Care prioritizes identifying vulnerable groups and actively providing care and support to meet their needs."},{"label":"C","text":"It violates explicit contractual agreements made with competitor organizations in the area.","isCorrect":false,"rationale":"Contractual obligations to market competitors relate to social contracts or deontology, not care ethics."},{"label":"D","text":"It fails to optimize long-term stock performance for international investors.","isCorrect":false,"rationale":"Stock performance optimization is a financial/utilitarian concern, not an Ethics of Care priority."}]},{"question":"An executive considers making a false promise to a vendor to secure temporary financing, assuming the debt will be paid back before anyone notices. Under Kant’s principle of Universality, why is this action unethical?","hint":"Consider what happens to the institution of promising itself if everyone lied whenever convenient.","options":[{"label":"A","text":"If making false promises became a universal law, the concept of a promise would become logically impossible and self-contradictory.","isCorrect":true,"rationale":"Kant's universality test shows that if false promising were universalized, trust would cease, creating a self-contradiction."},{"label":"B","text":"The company's brand image will suffer irreparable damage if the local press uncovers the lie.","isCorrect":false,"rationale":"Concern over media exposure and brand image represents the Virtue Ethics disclosure criterion, not Kantian universality."},{"label":"C","text":"The vendor is a key stakeholder whose net financial loss outweighs the executive's temporary gain.","isCorrect":false,"rationale":"Weighing financial gains against financial losses is a utilitarian calculation."},{"label":"D","text":"The executive's personal conscience feels uncomfortable with deceitful conduct.","isCorrect":false,"rationale":"Personal conscience represents subjective intuition, whereas Kantian universality relies on logical non-contradiction."}]},{"question":"According to source readings on ethical decision-making, what is a primary drawback of believing that every ethical dilemma has 'one perfect or ideal answer'?","hint":"Think about how believing in a single right answer affects option generation and cognitive flexibility.","options":[{"label":"A","text":"It creates a rigid constraint mindset that prevents leaders from actively building creative alternative options.","isCorrect":true,"rationale":"Believing in a single ideal solution restricts option generation, whereas viewing dilemmas as having multiple solutions fosters moral insight."},{"label":"B","text":"It prevents organizations from establishing clear mission statements and core competencies.","isCorrect":false,"rationale":"Idealism relates to how solutions are conceived, not whether an organization can define its mission."},{"label":"C","text":"It leads to an overemphasis on Ethics of Care at the expense of legal requirements.","isCorrect":false,"rationale":"Seeking one ideal answer does not privilege Ethics of Care over legal rules."},{"label":"D","text":"It forces leaders to rely strictly on utilitarian calculations rather than personal virtues.","isCorrect":false,"rationale":"Platonic idealism does not inherently force utilitarian cost-benefit modeling."}]}];
+const tr = {"correct":"Correct!","incorrect":"Incorrect","next":"Next Question →","seeResults":"See Results","complete":"Quiz Complete!","scoreText":"You got {correct} out of {total} correct","tryAgain":"Try Again","rightAnswer":"Right answer","notQuite":"Not quite"};
+let currentQ = 0, correctCount = 0, answered = false;
+
+function init() {
+  document.querySelectorAll('.question').forEach((q, i) => q.classList.toggle('active', i === 0));
+  updateProgress();
+  document.querySelectorAll('.option').forEach(opt => opt.addEventListener('click', () => selectOption(opt)));
+  document.querySelectorAll('.next-btn').forEach(btn => btn.addEventListener('click', nextQuestion));
+}
+
+function selectOption(opt) {
+  if (answered) return;
+  answered = true;
+  const q = opt.closest('.question');
+  const options = q.querySelectorAll('.option');
+  const nextBtn = q.querySelector('.next-btn');
+  const isCorrect = opt.dataset.correct === 'true';
+  
+  // Mark all options as disabled
+  options.forEach(o => o.classList.add('disabled'));
+  
+  // Style selected option
+  opt.classList.add('selected', isCorrect ? 'correct' : 'incorrect');
+  
+  // Show correct answer if wrong
+  if (!isCorrect) {
+    const correctOpt = [...options].find(o => o.dataset.correct === 'true');
+    if (correctOpt) correctOpt.classList.add('show-correct');
+  }
+  
+  if (isCorrect) correctCount++;
+  
+  // Show feedback for ALL options that have rationale
+  options.forEach(o => {
+    const wrapper = o.closest('.option-wrapper');
+    const feedback = wrapper.querySelector('.option-feedback');
+    const rationale = o.dataset.rationale;
+    const isThisCorrect = o.dataset.correct === 'true';
+    
+    if (rationale && rationale.trim()) {
+      feedback.classList.remove('hidden');
+      feedback.classList.add(isThisCorrect ? 'correct-feedback' : 'incorrect-feedback');
+      
+      const statusEl = feedback.querySelector('.feedback-status');
+      statusEl.className = 'feedback-status ' + (isThisCorrect ? 'correct' : 'incorrect');
+      statusEl.innerHTML = isThisCorrect 
+        ? '✓ ' + tr.rightAnswer
+        : '✗ ' + tr.notQuite;
+    }
+  });
+  
+  nextBtn.classList.remove('hidden');
+  if (currentQ === quizData.length - 1) nextBtn.textContent = tr.seeResults;
+}
+
+function nextQuestion() {
+  answered = false;
+  currentQ++;
+  if (currentQ >= quizData.length) { showResults(); return; }
+  document.querySelectorAll('.question').forEach((q, i) => q.classList.toggle('active', i === currentQ));
+  updateProgress();
+}
+
+function updateProgress() {
+  document.querySelector('.progress-fill').style.width = (currentQ / quizData.length * 100) + '%';
+}
+
+function showResults() {
+  document.querySelectorAll('.question').forEach(q => q.classList.remove('active'));
+  document.getElementById('results').classList.add('active');
+  const pct = Math.round((correctCount / quizData.length) * 100);
+  document.getElementById('score').textContent = pct + '%';
+  document.getElementById('score-text').textContent = tr.scoreText.replace('{correct}', correctCount).replace('{total}', quizData.length);
+  document.querySelector('.progress-fill').style.width = '100%';
+}
+
+function restart() {
+  currentQ = 0; correctCount = 0; answered = false;
+  document.getElementById('results').classList.remove('active');
+  document.querySelectorAll('.question').forEach((q, i) => {
+    q.classList.toggle('active', i === 0);
+    q.querySelectorAll('.option').forEach(o => o.classList.remove('selected', 'correct', 'incorrect', 'disabled', 'show-correct'));
+    q.querySelectorAll('.option-feedback').forEach(f => {
+      f.classList.add('hidden');
+      f.classList.remove('correct-feedback', 'incorrect-feedback');
+    });
+    const btn = q.querySelector('.next-btn');
+    btn.classList.add('hidden');
+    btn.textContent = tr.next;
+  });
+  updateProgress();
+}
+
+init();
+</script>
+</body>
+</html>
